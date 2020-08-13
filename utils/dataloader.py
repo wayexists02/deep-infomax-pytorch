@@ -24,7 +24,7 @@ class STLDataLoader():
         else:
             raise ValueError(f"INVALID mode: {mode}")
 
-        self.data = self._read_data()
+        self.data, self.label = self._read_data()
         self.N = self.data.shape[0]
         self.n_batches = int(np.ceil(self.N / batch_size))
 
@@ -34,28 +34,34 @@ class STLDataLoader():
         return self.n_batches
 
     def __iter__(self):
-        return self
-
-    def __next__(self):
         if self.shuffle is True:
-            np.random.shuffle(self.data)
+            indices = np.arange(self.N)
+            np.random.shuffle(indices)
+
+        data = self.data[indices]
+        label = self.label[indices]
 
         for b in range(len(self)):
             start = b*self.batch_size
             end = min(self.N, (b+1)*self.batch_size)
 
             x_batch = self.data[start:end]
-            return x_batch
+            y_batch = self.label[start:end]
+
+            yield x_batch, y_batch
 
     def _read_data(self):
         with open(self.x_path, "rb") as f:
             images = np.fromfile(f, dtype=np.int8)
+        with open(self.y_path, "rb") as f:
+            labels = np.fromfile(f, dtype=np.uint8)
+
         images = images.reshape(-1, 3, 96, 96).astype(np.float32).transpose(0, 1, 3, 2)
 
         images = (images - 128) / 256
 
         images_with_noise = self._random_noise(images)
-        return images_with_noise
+        return images_with_noise, labels
 
     def _random_noise(self, image):
         if self.noise is True and np.random.rand() < 0.5:

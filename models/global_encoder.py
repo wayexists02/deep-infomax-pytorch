@@ -22,5 +22,8 @@ class GlobalEncoder(nn.Module):
         )
 
     def forward(self, x):
+        N = x.size(0)
+
         x = self.encoder(x)
+        x = x.view(N, -1)
         return x
