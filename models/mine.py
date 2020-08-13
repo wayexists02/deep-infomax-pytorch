@@ -9,7 +9,7 @@ class MINE(nn.Module):
         super(MINE, self).__init__()
         
         self.mine_estimator = nn.Sequential(
-            nn.Conv2d(576, 1, (12, 12), stride=1, padding=0), # 4
+            nn.Conv2d(576, 1, (12, 12), stride=1, padding=0),
             nn.Sigmoid()
         )
 
