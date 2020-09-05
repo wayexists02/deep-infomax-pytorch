@@ -17,7 +17,8 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, x):
-        N = x.size(0)
+        N, C, _, _ = x.size()
+        x = x.view(N, C)
 
         x = self.disc(x)
         x = x.view(N)

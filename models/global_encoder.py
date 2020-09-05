@@ -25,5 +25,5 @@ class GlobalEncoder(nn.Module):
         N = x.size(0)
 
         x = self.encoder(x)
-        x = x.view(N, -1)
+        # x = x.view(N, -1)
         return x
