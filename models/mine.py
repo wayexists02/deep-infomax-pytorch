@@ -7,13 +7,31 @@ class MINE(nn.Module):
 
     def __init__(self):
         super(MINE, self).__init__()
+
+        self.embedding_dim = 128
         
         self.mine_estimator = nn.Sequential(
             nn.Conv2d(576, 1, (12, 12), stride=1, padding=0),
             nn.Sigmoid()
         )
 
+        self.local_embedder = nn.Sequential(
+            nn.Conv2d(64, self.embedding_dim, (3, 3), stride=1, padding=1),
+        )
+
+        self.global_embedder = nn.Sequential(
+            nn.Conv2d(512, self.embedding_dim, (1, 1), stride=1, padding=0),
+        )
+
     def forward(self, local_features, global_features):
+        N = local_features.size(0)
+        
+        # mutual_information = self.compute_mine(local_features, global_features)
+        mutual_information = self.compute_info_nse(local_features, global_features)
+
+        return mutual_information
+
+    def compute_mine(self, local_features, global_features):
         N = local_features.size(0)
 
         r = np.random.randint(0, N-1)
@@ -34,6 +52,27 @@ class MINE(nn.Module):
 
         t = self.mine_estimator(concated)
         return t
+
+    def compute_info_nse(self, local_features, global_features):
+        N, C, H, W = local_features.size()
+
+        local_feature_embedded = self.local_embedder(local_features)
+        global_feature_embedded = self.global_embedder(global_features)
+
+        local_feature_embedded = local_feature_embedded.permute(0, 2, 3, 1).reshape(N, H*W, self.embedding_dim)
+        global_feature_embedded = global_feature_embedded.view(N, -1)
+
+        dotted = torch.einsum("nij,mj->nmi", local_feature_embedded, global_feature_embedded)
+        t = torch.sigmoid(dotted)
+
+        pos_mask = torch.eye(N).to(local_features.device).unsqueeze(-1)
+        neg_mask = 1 - pos_mask
+
+        t_pos = torch.sum(t*pos_mask, dim=0)
+        t_neg = torch.log(torch.sum(torch.exp(t*neg_mask), dim=0))
+
+        mutual_information = torch.mean(t_pos - t_neg)
+        return mutual_information
 
     def _softplus(self, z):
         return torch.log(1 + torch.exp(z))
